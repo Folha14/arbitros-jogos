@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Utilizador {
+  id                     Int       @id @default(autoincrement())
+  nome                   String
+  telefone               String?
+  email                  String    @unique
+  passwordHash           String    @map("password_hash")
+  funcaoPadrao           String?   @map("funcao_padrao")
+  role                   String    @default("utilizador")
+  emailConfirmado        Boolean   @default(false) @map("email_confirmado")
+  tokenConfirmacaoEmail  String?   @map("token_confirmacao_email")
+  codigo2FA              String?   @map("codigo_2fa")
+  codigo2FAExpira        DateTime? @map("codigo_2fa_expira")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  registos               RegistoArbitragem[]
+
+  @@map("utilizadores")
+}
+
+model Competicao {
+  id       Int       @id @default(autoincrement())
+  nome     String
+  escalao  String
+  epoca    String
+  jogos    JogoFPB[]
+  registos RegistoArbitragem[]
+
+  @@map("competicoes")
+}
+
+model JogoFPB {
+  id            Int        @id @default(autoincrement())
+  dataJogo      String     @map("data_jogo")
+  horaJogo      String?    @map("hora_jogo")
+  equipaCasa    String     @map("equipa_casa")
+  equipaFora    String     @map("equipa_fora")
+  pavilhao      String?
+  localidade    String?
+  competicaoId  Int        @map("competicao_id")
+  competicao    Competicao @relation(fields: [competicaoId], references: [id])
+  fonteUrl      String?    @map("fonte_url")
+  hashUnico     String     @unique @map("hash_unico")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+  registos      RegistoArbitragem[]
+
+  @@map("jogos_fpb")
+}
+
+model RegistoArbitragem {
+  id            Int          @id @default(autoincrement())
+  utilizadorId  Int          @map("utilizador_id")
+  utilizador    Utilizador   @relation(fields: [utilizadorId], references: [id])
+  jogoFpbId     Int?         @map("jogo_fpb_id")
+  jogoFpb       JogoFPB?     @relation(fields: [jogoFpbId], references: [id])
+  dataJogo      String       @map("data_jogo")
+  horaJogo      String?      @map("hora_jogo")
+  competicaoId  Int?         @map("competicao_id")
+  competicao    Competicao?  @relation(fields: [competicaoId], references: [id])
+  equipaCasa    String       @map("equipa_casa")
+  equipaFora    String       @map("equipa_fora")
+  pavilhao      String?
+  funcao        String
+  observacoes   String?
+  valor         Decimal?
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  @@map("registos_arbitragem")
+}
+
+model EscalaoValor {
+  id            Int      @id @default(autoincrement())
+  equipa        String
+  escalao       String
+  valorArbitro  Decimal  @map("valor_arbitro")
+  valorMesa     Decimal  @map("valor_mesa")
+
+  @@unique([equipa, escalao])
+  @@map("escalao_valores")
+}

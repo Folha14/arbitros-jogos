@@ -1,0 +1,104 @@
+# GRIB - Aplicação de Arbitragem
+
+Aplicação para apontar jogos e gerir valores de árbitros, com backend em Node.js/Express + PostgreSQL e frontend em React (Vite).
+
+## Estrutura do projeto
+
+/backend    -> API Node.js + Express + PostgreSQL (via Prisma / pg)
+/frontend   -> Aplicação React (Vite)
+
+---
+
+## 1. Pré-requisitos
+
+- Node.js (v18 ou superior)
+- PostgreSQL (v14 ou superior)
+- npm
+
+---
+
+## 2. Configurar a Base de Dados (PostgreSQL)
+
+### 2.1. Criar a base de dados
+
+CREATE DATABASE grib_arbitragem;
+
+### 2.2. Configurar a ligação no backend
+
+No ficheiro backend/.env:
+
+DATABASE_URL="postgresql://<utilizador>:<password>@localhost:5432/grib_arbitragem"
+PORT=3001
+JWT_SECRET="uma_chave_secreta_forte_aqui"
+
+### 2.3. Aplicar o schema à base de dados
+
+cd backend
+npx prisma generate
+npx prisma db push
+
+Para repor do zero (apaga tudo):
+
+npx prisma migrate reset
+
+### 2.4. Criar o primeiro utilizador admin
+
+INSERT INTO utilizadores (nome, email, password_hash, funcao_padrao, role)
+VALUES ('Nome Exemplo', 'email@exemplo.pt', '<hash_da_password>', 'arbitro', 'admin');
+
+---
+
+## 3. Backend
+
+cd backend
+npm install
+npm run dev
+
+Corre em http://localhost:3001
+
+Teste rápido:
+
+curl -X POST http://localhost:3001/api/auth/login -H "Content-Type: application/json" -d '{"email":"email@exemplo.pt","password":"a_sua_password"}'
+
+---
+
+## 4. Frontend
+
+cd frontend
+npm install
+npm run dev
+
+Corre em http://localhost:5173
+
+Confirme o baseURL em frontend/src/services/api.js:
+
+baseURL: 'http://localhost:3001/api'
+
+---
+
+## 5. Testar o fluxo completo
+
+1. Login em /login com o utilizador admin
+2. Confirmar link "Gestão de Valores" no menu
+3. Aceder a /admin/escalao-valores e criar um escalão
+4. Verificar cálculo automático em /
+5. Confirmar registos em /historico
+
+---
+
+## 6. Problemas comuns
+
+| Problema | Causa | Solução |
+|---|---|---|
+| Erro 401 | Token expirado/ausente | Login novamente |
+| Erro 403 em /admin/escalao-valores | role != admin | Atualizar role na tabela utilizadores |
+| column "role" does not exist | Schema não sincronizado | npx prisma db push |
+| Frontend não liga ao backend | baseURL errado | Confirmar api.js |
+| Erro 409 ao criar escalão | Escalão duplicado | Editar o existente |
+
+---
+
+## 7. Scripts
+
+Backend: npm run dev, npm start
+Frontend: npm run dev, npm run build, npm run preview, npm run lint

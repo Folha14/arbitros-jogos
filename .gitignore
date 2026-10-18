@@ -4,3 +4,4 @@ backup*.sql
 Auditoria_Arbitros_Jogos.txt
 registos_teste.csv
 frontend/Get-ChildItem
+migrations_arquivo/

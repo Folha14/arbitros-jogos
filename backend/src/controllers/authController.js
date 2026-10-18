@@ -188,6 +188,7 @@ async function login(req, res) {
       data: {
         codigo2FA,
         codigo2FAExpira,
+        tentativas2FA: 0,
       },
     });
 
@@ -226,36 +227,87 @@ async function validar2FA(req, res) {
     return res.status(400).json({ erro: 'Token temporário e código de segurança são obrigatórios' });
   }
 
+  let decoded;
   try {
-    const decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
-    if (decoded.passo !== '2fa_pendente') {
-      return res.status(401).json({ erro: 'Sessão 2FA inválida' });
-    }
+    decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
+  } catch {
+    return res.status(401).json({ erro: 'Sessão 2FA expirada ou inválida.' });
+  }
 
+  if (decoded.passo !== '2fa_pendente') {
+    return res.status(401).json({ erro: 'Sessão 2FA inválida' });
+  }
+
+  try {
     const utilizador = await prisma.utilizador.findUnique({
       where: { id: decoded.id },
     });
 
     if (!utilizador || !utilizador.codigo2FA || !utilizador.codigo2FAExpira) {
-      return res.status(401).json({ erro: 'Nenhum código de segurança pendente' });
+      return res.status(401).json({ erro: 'Código inválido ou expirado. Pede um novo código.' });
     }
 
-    if (new Date() > new Date(utilizador.codigo2FAExpira)) {
-      return res.status(401).json({ erro: 'O código de segurança expirou. Por favor tenta entrar novamente.' });
+    const agora = new Date();
+    if (agora >= utilizador.codigo2FAExpira) {
+      return res.status(401).json({ erro: 'Código inválido ou expirado. Pede um novo código.' });
     }
 
     if (utilizador.codigo2FA !== String(codigo).trim()) {
-      return res.status(401).json({ erro: 'Código de segurança incorreto' });
+      const resultadoFalha = await prisma.$transaction(async (tx) => {
+        const incremento = await tx.utilizador.updateMany({
+          where: {
+            id: utilizador.id,
+            codigo2FA: utilizador.codigo2FA,
+            codigo2FAExpira: { equals: utilizador.codigo2FAExpira, gt: agora },
+            tentativas2FA: { lt: 5 },
+          },
+          data: { tentativas2FA: { increment: 1 } },
+        });
+
+        if (incremento.count !== 1) {
+          return 'codigo-indisponivel';
+        }
+
+        const invalidacao = await tx.utilizador.updateMany({
+          where: {
+            id: utilizador.id,
+            codigo2FA: utilizador.codigo2FA,
+            codigo2FAExpira: { equals: utilizador.codigo2FAExpira, gt: agora },
+            tentativas2FA: { gte: 5 },
+          },
+          data: {
+            codigo2FA: null,
+            codigo2FAExpira: null,
+          },
+        });
+
+        return invalidacao.count === 1 ? 'novo-codigo-necessario' : 'codigo-incorreto';
+      });
+
+      if (resultadoFalha === 'novo-codigo-necessario' || resultadoFalha === 'codigo-indisponivel') {
+        return res.status(401).json({ erro: 'Código inválido ou expirado. Pede um novo código.' });
+      }
+
+      return res.status(401).json({ erro: 'Código de segurança inválido.' });
     }
 
-    // Limpar o código 2FA usado
-    await prisma.utilizador.update({
-      where: { id: utilizador.id },
+    const consumo = await prisma.utilizador.updateMany({
+      where: {
+        id: utilizador.id,
+        codigo2FA: utilizador.codigo2FA,
+        codigo2FAExpira: { equals: utilizador.codigo2FAExpira, gt: agora },
+        tentativas2FA: { lt: 5 },
+      },
       data: {
         codigo2FA: null,
         codigo2FAExpira: null,
+        tentativas2FA: 0,
       },
     });
+
+    if (consumo.count !== 1) {
+      return res.status(401).json({ erro: 'Código inválido ou expirado. Pede um novo código.' });
+    }
 
     // Emitir Token JWT Final
     const token = jwt.sign(
@@ -282,7 +334,7 @@ async function validar2FA(req, res) {
     });
   } catch (err) {
     console.error('ERRO VALIDAR 2FA:', err);
-    return res.status(401).json({ erro: 'Sessão 2FA expirada ou inválida.' });
+    return res.status(500).json({ erro: 'Erro ao validar o código de segurança.' });
   }
 }
 
@@ -308,7 +360,7 @@ async function reenviar2FA(req, res) {
 
     await prisma.utilizador.update({
       where: { id: utilizador.id },
-      data: { codigo2FA, codigo2FAExpira },
+      data: { codigo2FA, codigo2FAExpira, tentativas2FA: 0 },
     });
 
     await enviarCodigo2FA(utilizador.email, codigo2FA, utilizador.nome);

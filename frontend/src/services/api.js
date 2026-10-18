@@ -17,7 +17,16 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const urlPedido = (error.config?.url || '')
+      .split('?')[0]
+      .replace(/\/+$/, '');
+    const pedidoDeAutenticacao = [
+      '/auth/login',
+      '/auth/validar-2fa',
+      '/auth/reenviar-2fa',
+    ].some((endpoint) => urlPedido.endsWith(endpoint));
+
+    if (error.response?.status === 401 && !pedidoDeAutenticacao) {
       localStorage.removeItem('token');
       localStorage.removeItem('utilizador');
       if (window.location.pathname !== '/login') {

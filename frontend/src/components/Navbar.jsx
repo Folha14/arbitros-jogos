@@ -52,6 +52,15 @@ export default function Navbar() {
         </NavLink>
         
         {isAdmin && (
+          <NavLink
+            to="/admin/jogos"
+            className={({ isActive }) => isActive ? 'active' : ''}
+          >
+            Jogos
+          </NavLink>
+        )}
+
+        {isAdmin && (
           <NavLink 
             to="/admin/escalao-valores" 
             className={({ isActive }) => isActive ? 'active' : ''}

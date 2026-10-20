@@ -6,6 +6,7 @@ const authRoutes = require('./routes/auth.routes');
 const registosRoutes = require('./routes/registos.routes');
 const { iniciarScheduler } = require('./scraper/scheduler');
 const adminUtilizadoresRoutes = require('./routes/adminUtilizadores.routes');
+const adminJogosRoutes = require('./routes/adminJogos.routes');
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/registos', registosRoutes);
 app.use('/api/escalao-valores', require('./routes/escalaoValores'));
 app.use('/api/admin/utilizadores', adminUtilizadoresRoutes);
+app.use('/api/admin/jogos', adminJogosRoutes);
 
 iniciarScheduler();
 

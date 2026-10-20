@@ -5,6 +5,7 @@ import RotaNaoAdmin from './components/RotaNaoAdmin';
 import { useAuth } from './context/AuthContext';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminEscalaoValoresPage from './pages/AdminEscalaoValoresPage';
+import AdminJogosPage from './pages/AdminJogosPage';
 import AdminUtilizadoresPage from './pages/AdminUtilizadoresPage';
 import DashboardPage from './pages/DashboardPage';
 import HistoricoPage from './pages/HistoricoPage';
@@ -101,6 +102,15 @@ export default function App() {
           element={
             <RotaAdmin>
               <AdminEscalaoValoresPage />
+            </RotaAdmin>
+          }
+        />
+
+        <Route
+          path="/admin/jogos"
+          element={
+            <RotaAdmin>
+              <AdminJogosPage />
             </RotaAdmin>
           }
         />

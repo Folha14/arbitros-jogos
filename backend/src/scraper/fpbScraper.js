@@ -1,7 +1,7 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
-const crypto = require('crypto');
 const prisma = require('../config/database');
+const { gerarHashJogo } = require('../utils/gerarHashJogo');
 
 const URL_CALENDARIO = 'https://www.fpb.pt/calendario/clube_704/';
 
@@ -22,11 +22,6 @@ function converterHora(textoHora) {
   if (!textoHora) return null;
   const limpo = textoHora.trim().replace('H', ':');
   return limpo || null;
-}
-
-function gerarHash({ dataJogo, equipaCasa, equipaFora, horaJogo }) {
-  const base = `${dataJogo}-${equipaCasa}-${equipaFora}-${horaJogo}`;
-  return crypto.createHash('md5').update(base).digest('hex');
 }
 
 async function obterCompeticao(nomeCompleto) {
@@ -77,7 +72,7 @@ async function correrScraper() {
 
     if (!equipaCasa || !equipaFora) continue;
 
-    const hashUnico = gerarHash({ dataJogo: dataAtual, equipaCasa, equipaFora, horaJogo });
+    const hashUnico = gerarHashJogo({ dataJogo: dataAtual, equipaCasa, equipaFora, horaJogo });
     const competicao = await obterCompeticao(competicaoTexto);
 
     const jogoExistente = await prisma.jogoFPB.findUnique({ where: { hashUnico } });

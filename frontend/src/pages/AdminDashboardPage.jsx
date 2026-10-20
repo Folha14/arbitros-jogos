@@ -15,6 +15,11 @@ export default function AdminDashboardPage() {
           <p>Ver contas, contactos e promover utilizadores a admin.</p>
         </Link>
 
+        <Link to="/admin/jogos" className="dashboard-card">
+          <h2>Jogos</h2>
+          <p>Listar, criar, editar e apagar jogos do calendário.</p>
+        </Link>
+
         <Link to="/admin/escalao-valores" className="dashboard-card">
           <h2>Gestao de Valores</h2>
           <p>Editar os valores por equipa e escalao.</p>

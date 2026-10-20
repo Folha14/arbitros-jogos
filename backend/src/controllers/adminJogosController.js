@@ -1,5 +1,6 @@
 const prisma = require('../config/database');
 const { gerarHashJogo } = require('../utils/gerarHashJogo');
+const { obterDataAtualLisboa } = require('../utils/dataAtualLisboa');
 
 function lerId(valor) {
   const id = Number(valor);
@@ -33,6 +34,10 @@ function normalizarJogo(body = {}) {
   const dataValidada = new Date(`${dataJogo}T00:00:00.000Z`);
   if (Number.isNaN(dataValidada.getTime()) || dataValidada.toISOString().slice(0, 10) !== dataJogo) {
     return { erro: 'A data do jogo não é válida.' };
+  }
+
+  if (dataJogo < obterDataAtualLisboa()) {
+    return { erro: 'A data do jogo não pode ser anterior à data atual.' };
   }
 
   if (!equipaCasa || !equipaFora) {
@@ -83,9 +88,24 @@ async function verificarCompeticao(competicaoId) {
   });
 }
 
+async function verificarConflitoDataHora({ dataJogo, horaJogo }, excluirId = null) {
+  if (!horaJogo) {
+    return false;
+  }
+
+  const where = { dataJogo, horaJogo };
+  if (excluirId != null) {
+    where.id = { not: excluirId };
+  }
+
+  return Boolean(await prisma.jogoFPB.findFirst({ where, select: { id: true } }));
+}
+
 function tratarErroJogo(err, res, acao) {
   if (err.code === 'P2002') {
-    return res.status(409).json({ erro: 'Já existe um jogo com os mesmos dados identificadores.' });
+    return res.status(409).json({
+      erro: 'Já existe um jogo na mesma data e hora ou com os mesmos dados identificadores.',
+    });
   }
 
   if (err.code === 'P2025') {
@@ -131,6 +151,10 @@ async function criarJogo(req, res) {
       return res.status(400).json({ erro: 'A competição selecionada não existe.' });
     }
 
+    if (await verificarConflitoDataHora(resultado.dados)) {
+      return res.status(409).json({ erro: 'Já existe outro jogo na mesma data e hora.' });
+    }
+
     const jogo = await prisma.jogoFPB.create({
       data: {
         ...resultado.dados,
@@ -160,6 +184,10 @@ async function atualizarJogo(req, res) {
     const competicao = await verificarCompeticao(resultado.dados.competicaoId);
     if (!competicao) {
       return res.status(400).json({ erro: 'A competição selecionada não existe.' });
+    }
+
+    if (await verificarConflitoDataHora(resultado.dados, id)) {
+      return res.status(409).json({ erro: 'Já existe outro jogo na mesma data e hora.' });
     }
 
     const jogo = await prisma.jogoFPB.update({

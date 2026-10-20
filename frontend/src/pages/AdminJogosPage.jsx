@@ -1,6 +1,18 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 
+function obterDataAtualLisboa() {
+  const partes = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Lisbon',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const valores = Object.fromEntries(partes.map(({ type, value }) => [type, value]));
+
+  return `${valores.year}-${valores.month}-${valores.day}`;
+}
+
 function jogoVazio() {
   return {
     dataJogo: '',
@@ -75,9 +87,26 @@ export default function AdminJogosPage() {
 
   async function guardarJogo(event) {
     event.preventDefault();
-    setAGuardar(true);
     setErro('');
 
+    if (rascunho.dataJogo < obterDataAtualLisboa()) {
+      setErro('A data do jogo não pode ser anterior à data atual.');
+      return;
+    }
+
+    if (
+      rascunho.horaJogo &&
+      jogos.some((jogo) =>
+        jogo.id !== editandoId &&
+        jogo.dataJogo === rascunho.dataJogo &&
+        jogo.horaJogo === rascunho.horaJogo
+      )
+    ) {
+      setErro('Já existe outro jogo na mesma data e hora.');
+      return;
+    }
+
+    setAGuardar(true);
     const payload = {
       ...rascunho,
       competicaoId: Number(rascunho.competicaoId),
